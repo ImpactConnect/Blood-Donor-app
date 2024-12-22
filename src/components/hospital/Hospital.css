@@ -195,3 +195,91 @@
     border-radius: 4px;
     margin: 1rem 0;
 } 
+
+.responses-list {
+  max-height: 400px;
+  overflow-y: auto;
+  margin: 1rem 0;
+}
+
+.response-item {
+  background: #f8f8f8;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.donor-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.donor-info h4 {
+  margin: 0;
+  color: #333;
+}
+
+.status {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.status.pending {
+  background: #fff7e6;
+  color: #fa8c16;
+}
+
+.status.accepted {
+  background: #f6ffed;
+  color: #52c41a;
+}
+
+.status.rejected {
+  background: #fff1f0;
+  color: #f5222d;
+}
+
+.response-details {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.response-details p {
+  margin: 0.25rem 0;
+}
+
+.response-actions {
+  margin-top: 0.5rem;
+}
+
+.contact-donor-btn {
+  background: transparent;
+  border: 1px solid #1890ff;
+  color: #1890ff;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.contact-donor-btn:hover {
+  background: #1890ff;
+  color: white;
+}
+
+.close-modal-btn {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: #f0f0f0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.close-modal-btn:hover {
+  background: #e0e0e0;
+}

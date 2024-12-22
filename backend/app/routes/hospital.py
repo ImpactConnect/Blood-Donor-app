@@ -36,21 +36,33 @@ def profile():
         return jsonify({'error': str(e)}), 500
 
 @hospital_bp.route('/requests', methods=['GET'])
-@jwt_required()
 def get_requests():
+    """Get all blood requests."""
     try:
-        hospital_id = get_jwt_identity()
-        hospital = Hospital.query.get(int(hospital_id))
+        # Get all active requests (not cancelled or fulfilled)
+        requests = BloodRequest.query.filter(
+            BloodRequest.status == 'open'
+        ).order_by(BloodRequest.created_at.desc()).all()
         
-        if not hospital:
-            return jsonify({'error': 'Hospital not found'}), 404
-
-        requests = BloodRequest.query.filter_by(hospital_id=hospital.id)\
-            .order_by(BloodRequest.created_at.desc()).all()
+        # Convert requests to dictionary format
+        requests_data = [{
+            'id': req.id,
+            'bloodType': req.blood_type,
+            'units': req.units_needed,
+            'urgency': req.urgency_level,
+            'status': req.status,
+            'description': req.description,
+            'created_at': req.created_at.isoformat(),
+            'hospital_name': req.hospital.name,
+            'location': req.hospital.address,
+            'responses': len(req.responses)
+        } for req in requests]
         
-        return jsonify([request.to_dict() for request in requests]), 200
+        logger.info(f"Fetched {len(requests_data)} active requests")
+        return jsonify(requests_data), 200
 
     except Exception as e:
+        logger.error(f"Error fetching requests: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @hospital_bp.route('/requests', methods=['POST'])
@@ -194,3 +206,68 @@ def get_available_donors():
     except Exception as e:
         logger.error(f"Error getting available donors: {str(e)}")
         return jsonify({'error': 'Failed to fetch available donors'}), 500 
+
+@hospital_bp.route('/requests/<int:request_id>/respond', methods=['POST'])
+@jwt_required()
+def respond_to_request(request_id):
+    """Donor responds to a blood request."""
+    try:
+        donor_id = get_jwt_identity()
+        donor = Donor.query.get(int(donor_id))
+        
+        if not donor:
+            return jsonify({'error': 'Donor not found'}), 404
+
+        blood_request = BloodRequest.query.get(request_id)
+        if not blood_request:
+            return jsonify({'error': 'Request not found'}), 404
+
+        # Check if donor has already responded
+        existing_response = DonorResponse.query.filter_by(
+            request_id=request_id,
+            donor_id=donor_id
+        ).first()
+        
+        if existing_response:
+            return jsonify({'error': 'Already responded to this request'}), 400
+
+        # Create new response
+        response = DonorResponse(
+            request_id=request_id,
+            donor_id=donor_id,
+            status='pending'
+        )
+        
+        db.session.add(response)
+        db.session.commit()
+        
+        logger.info(f"Donor {donor_id} responded to request {request_id}")
+        return jsonify({
+            'message': 'Response recorded successfully',
+            'response': response.to_dict()
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error recording response: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@hospital_bp.route('/contact/<int:hospital_id>', methods=['GET'])
+@jwt_required()
+def get_hospital_contact(hospital_id):
+    """Get hospital contact information."""
+    try:
+        hospital = Hospital.query.get(hospital_id)
+        if not hospital:
+            return jsonify({'error': 'Hospital not found'}), 404
+
+        return jsonify({
+            'name': hospital.name,
+            'phone': hospital.phone,
+            'email': hospital.email,
+            'address': hospital.address
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error getting hospital contact: {str(e)}")
+        return jsonify({'error': str(e)}), 500 

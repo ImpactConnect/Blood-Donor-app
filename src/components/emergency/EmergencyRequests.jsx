@@ -8,18 +8,25 @@ function EmergencyRequests() {
   const [emergencyRequests, setEmergencyRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [selectedHospital, setSelectedHospital] = useState(null)
+  const [showContactModal, setShowContactModal] = useState(false)
 
   useEffect(() => {
     const fetchEmergencyRequests = async () => {
       try {
         setLoading(true)
         setError(null)
-        // Get all active requests
+        console.log('Fetching emergency requests...')
+        
         const response = await hospitalService.getActiveRequests()
+        console.log('All requests:', response)
+        
         // Filter for urgent and critical requests
         const urgentRequests = response.filter(req => 
           req.urgency === 'urgent' || req.urgency === 'critical'
         )
+        console.log('Urgent requests:', urgentRequests)
+        
         setEmergencyRequests(urgentRequests)
       } catch (error) {
         console.error('Error fetching emergency requests:', error)
@@ -30,7 +37,6 @@ function EmergencyRequests() {
     }
 
     fetchEmergencyRequests()
-    // Set up polling for real-time updates
     const interval = setInterval(fetchEmergencyRequests, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -47,6 +53,16 @@ function EmergencyRequests() {
       )
     } catch (error) {
       console.error('Error responding to request:', error)
+    }
+  }
+
+  const handleContactHospital = async (request) => {
+    try {
+      const response = await hospitalService.getHospitalContact(request.hospital_id)
+      setSelectedHospital(response)
+      setShowContactModal(true)
+    } catch (error) {
+      console.error('Error getting hospital contact:', error)
     }
   }
 
@@ -136,7 +152,10 @@ function EmergencyRequests() {
                     Response Recorded
                   </button>
                 )}
-                <button className="contact-button">
+                <button 
+                  className="contact-button"
+                  onClick={() => handleContactHospital(request)}
+                >
                   Contact Hospital
                 </button>
               </div>
@@ -149,6 +168,18 @@ function EmergencyRequests() {
           </div>
         )}
       </div>
+
+      {showContactModal && selectedHospital && (
+        <div className="modal">
+          <div className="modal-content">
+            <h3>Contact {selectedHospital.name}</h3>
+            <p>Phone: {selectedHospital.phone}</p>
+            <p>Email: {selectedHospital.email}</p>
+            <p>Address: {selectedHospital.address}</p>
+            <button onClick={() => setShowContactModal(false)}>Close</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

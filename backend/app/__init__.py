@@ -21,7 +21,6 @@ def create_app(config_class=Config):
 
     with app.app_context():
         # Import routes
-        from .routes.emergency import emergency_bp
         from .routes.auth import auth_bp
         from .routes.donor import donor_bp
         from .routes.hospital import hospital_bp
@@ -30,7 +29,6 @@ def create_app(config_class=Config):
         from .routes.matching import matching_bp
 
         # Register blueprints
-        app.register_blueprint(emergency_bp)
         app.register_blueprint(auth_bp, url_prefix='/api/auth')
         app.register_blueprint(donor_bp, url_prefix='/api/donor')
         app.register_blueprint(hospital_bp, url_prefix='/api/hospital')

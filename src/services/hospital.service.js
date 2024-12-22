@@ -26,7 +26,17 @@ export const hospitalService = {
     try {
       const response = await api.get('/hospital/requests')
       console.log('Active requests response:', response.data)
-      return response.data || []
+      
+      if (!Array.isArray(response.data)) {
+        console.error('Unexpected response format:', response.data)
+        return []
+      }
+      
+      return response.data.map(req => ({
+        ...req,
+        urgency: req.urgency_level || req.urgency,
+        units: req.units_needed || req.units
+      }))
     } catch (error) {
       console.error('Error fetching requests:', error.response || error)
       throw new Error(error.response?.data?.error || 'Failed to fetch requests')
@@ -52,5 +62,37 @@ export const hospitalService = {
   async recordDonation(donationData) {
     const response = await api.post('/hospital/record-donation', donationData)
     return response.data
+  },
+
+  async respondToRequest(requestId) {
+    try {
+      const response = await api.post(`/hospital/requests/${requestId}/respond`)
+      console.log('Response recorded:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('Error responding to request:', error)
+      throw new Error(error.response?.data?.error || 'Failed to respond to request')
+    }
+  },
+
+  async getHospitalContact(hospitalId) {
+    try {
+      const response = await api.get(`/hospital/contact/${hospitalId}`)
+      return response.data
+    } catch (error) {
+      console.error('Error getting hospital contact:', error)
+      throw new Error(error.response?.data?.error || 'Failed to get hospital contact')
+    }
+  },
+
+  async getRequestResponses(requestId) {
+    try {
+      const response = await api.get(`/hospital/requests/${requestId}/responses`)
+      console.log('Request responses:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('Error fetching responses:', error)
+      throw new Error(error.response?.data?.error || 'Failed to fetch responses')
+    }
   }
 } 

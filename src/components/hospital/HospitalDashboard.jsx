@@ -17,6 +17,10 @@ function HospitalDashboard() {
     urgency: 'normal',
     description: ''
   })
+  const [selectedRequest, setSelectedRequest] = useState(null)
+  const [showResponsesModal, setShowResponsesModal] = useState(false)
+  const [responses, setResponses] = useState([])
+  const [loadingResponses, setLoadingResponses] = useState(false)
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -89,6 +93,22 @@ function HospitalDashboard() {
     } catch (err) {
         console.error('Error creating request:', err)
         setError(err.message || 'Failed to create request')
+    }
+  }
+
+  const handleViewResponses = async (request) => {
+    try {
+      setLoadingResponses(true)
+      setSelectedRequest(request)
+      setShowResponsesModal(true)
+      
+      const response = await hospitalService.getRequestResponses(request.id)
+      console.log('Request responses:', response)
+      setResponses(response)
+    } catch (error) {
+      console.error('Error fetching responses:', error)
+    } finally {
+      setLoadingResponses(false)
     }
   }
 
@@ -188,11 +208,15 @@ function HospitalDashboard() {
                 </div>
                 <div className="request-details">
                   <p>Units needed: {request.units}</p>
-                  <p>Responses: {request.responses}</p>
+                  <div className="request-actions">
+                    <button
+                      className="view-responses-btn"
+                      onClick={() => handleViewResponses(request)}
+                    >
+                      View Responses ({request.responses})
+                    </button>
+                  </div>
                 </div>
-                <button className="view-responses-btn">
-                  View Responses
-                </button>
               </div>
             ))}
           </div>
@@ -224,6 +248,49 @@ function HospitalDashboard() {
           )}
         </div>
       </div>
+
+      {showResponsesModal && selectedRequest && (
+        <div className="modal">
+          <div className="modal-content">
+            <h3>Responses for {selectedRequest.bloodType} Request</h3>
+            {loadingResponses ? (
+              <div className="loading-spinner"></div>
+            ) : responses.length > 0 ? (
+              <div className="responses-list">
+                {responses.map(response => (
+                  <div key={response.id} className="response-item">
+                    <div className="donor-info">
+                      <h4>{response.donor_name}</h4>
+                      <span className={`status ${response.status}`}>
+                        {response.status}
+                      </span>
+                    </div>
+                    <div className="response-details">
+                      <p>Responded: {new Date(response.created_at).toLocaleString()}</p>
+                    </div>
+                    <div className="response-actions">
+                      <button 
+                        className="contact-donor-btn"
+                        onClick={() => handleContactDonor(response)}
+                      >
+                        Contact Donor
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p>No responses yet</p>
+            )}
+            <button 
+              className="close-modal-btn"
+              onClick={() => setShowResponsesModal(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
