@@ -12,6 +12,7 @@ function DonorDashboard() {
   const [error, setError] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editedProfile, setEditedProfile] = useState(null)
+  const [isAvailable, setIsAvailable] = useState(user?.is_available || false)
 
   useEffect(() => {
     const fetchDonorData = async () => {
@@ -57,6 +58,18 @@ function DonorDashboard() {
   const handleCancelEdit = () => {
     setEditedProfile(profile)
     setIsEditing(false)
+  }
+
+  const toggleAvailability = async () => {
+    try {
+      setLoading(true)
+      await donorService.toggleAvailability(!isAvailable)
+      setIsAvailable(!isAvailable)
+    } catch (error) {
+      setError(error.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (loading) {
@@ -201,6 +214,18 @@ function DonorDashboard() {
           ) : (
             <p className="no-donations">No donation history available</p>
           )}
+        </div>
+
+        <div className="availability-toggle">
+          <label>
+            Available for Donation
+            <input
+              type="checkbox"
+              checked={isAvailable}
+              onChange={toggleAvailability}
+              className="toggle-switch"
+            />
+          </label>
         </div>
       </div>
     </div>

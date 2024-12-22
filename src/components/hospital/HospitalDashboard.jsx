@@ -23,6 +23,7 @@ function HospitalDashboard() {
   const [showResponsesModal, setShowResponsesModal] = useState(false)
   const [responses, setResponses] = useState([])
   const [loadingResponses, setLoadingResponses] = useState(false)
+  const [activeTab, setActiveTab] = useState('active')
 
   useEffect(() => {
     fetchDashboardData()
@@ -104,129 +105,226 @@ function HospitalDashboard() {
     <div className="dashboard-container">
       <div className="dashboard-header">
         <h1>Hospital Dashboard</h1>
+        <div className="hospital-info">
+          <h3>{user?.name}</h3>
+          <p>{user?.address}</p>
+        </div>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="stats-overview">
+        <div className="stat-card">
+          <h3>Active Requests</h3>
+          <p className="stat-number">{activeRequests.length}</p>
+        </div>
+        <div className="stat-card">
+          <h3>Fulfilled Requests</h3>
+          <p className="stat-number">{fulfilledRequests.length}</p>
+        </div>
+        <div className="stat-card">
+          <h3>Total Donations</h3>
+          <p className="stat-number">{donationHistory.length}</p>
+        </div>
       </div>
 
       {/* Create Request Section */}
-      <div className="dashboard-section">
-          <h2>Create Blood Request</h2>
-          <form onSubmit={handleNewRequest} className="request-form">
+      <div className="dashboard-section create-request">
+        <h2>Create Blood Request</h2>
+        <form onSubmit={handleNewRequest} className="request-form">
+          <div className="form-grid">
             <div className="form-group">
-            <label>Blood Type</label>
+              <label>Blood Type</label>
               <select
                 value={newRequest.bloodType}
-              onChange={(e) => setNewRequest(prev => ({ ...prev, bloodType: e.target.value }))}
+                onChange={(e) => setNewRequest(prev => ({ ...prev, bloodType: e.target.value }))}
                 required
               >
                 <option value="">Select Blood Type</option>
-              {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
+                {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
               </select>
             </div>
             <div className="form-group">
-            <label>Units Needed</label>
+              <label>Units Needed</label>
               <input
                 type="number"
-              value={newRequest.units}
-              onChange={(e) => setNewRequest(prev => ({ ...prev, units: parseInt(e.target.value) }))}
+                value={newRequest.units}
+                onChange={(e) => setNewRequest(prev => ({ ...prev, units: parseInt(e.target.value) }))}
                 min="1"
                 required
               />
             </div>
             <div className="form-group">
-            <label>Urgency</label>
+              <label>Urgency Level</label>
               <select
                 value={newRequest.urgency}
-              onChange={(e) => setNewRequest(prev => ({ ...prev, urgency: e.target.value }))}
+                onChange={(e) => setNewRequest(prev => ({ ...prev, urgency: e.target.value }))}
                 required
+                className={`urgency-select ${newRequest.urgency}`}
               >
                 <option value="normal">Normal</option>
                 <option value="urgent">Urgent</option>
                 <option value="critical">Critical</option>
               </select>
             </div>
+          </div>
+          <div className="form-group full-width">
+            <label>Description/Comments</label>
+            <textarea
+              value={newRequest.description}
+              onChange={(e) => setNewRequest(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Add any additional information or requirements..."
+              rows="3"
+              required
+            />
+          </div>
           <button type="submit" className="submit-btn">Create Request</button>
-          </form>
-        </div>
-
-      {/* Active Requests Section */}
-      <div className="dashboard-section">
-          <h2>Active Requests</h2>
-        <div className="requests-grid">
-            {activeRequests.map(request => (
-            <div key={request.id} className={`request-card ${request.urgency}`}>
-                <div className="request-header">
-                  <span className="blood-type">{request.bloodType}</span>
-                <span className="urgency-badge">{request.urgency}</span>
-                </div>
-                <div className="request-details">
-                  <p>Units needed: {request.units}</p>
-                <p>Responses: {request.responses || 0}</p>
-                <button onClick={() => handleViewResponses(request)} className="view-responses-btn">
-                  View Responses
-                    </button>
-                  </div>
-            </div>
-          ))}
-        </div>
+        </form>
       </div>
 
-      {/* Fulfilled Requests Section */}
-      <div className="dashboard-section">
-        <h2>Fulfilled Requests</h2>
-        <div className="requests-grid">
-          {fulfilledRequests.map(request => (
-            <div key={request.id} className="request-card fulfilled">
-              <div className="request-header">
-                <span className="blood-type">{request.bloodType}</span>
-                <span className="status-badge">Fulfilled</span>
-              </div>
-              <div className="request-details">
-                <p>Units received: {request.units}</p>
-                <p>Fulfilled on: {new Date(request.fulfilledAt).toLocaleDateString()}</p>
-                <p>Donor: {request.donorName}</p>
+      {/* Tabs for different sections */}
+      <div className="dashboard-tabs">
+        <button 
+          className={`tab-btn ${activeTab === 'active' ? 'active' : ''}`}
+          onClick={() => setActiveTab('active')}
+        >
+          Active Requests
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'fulfilled' ? 'active' : ''}`}
+          onClick={() => setActiveTab('fulfilled')}
+        >
+          Fulfilled Requests
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'donations' ? 'active' : ''}`}
+          onClick={() => setActiveTab('donations')}
+        >
+          Donation History
+        </button>
+      </div>
+
+      {/* Content based on active tab */}
+      <div className="tab-content">
+        {activeTab === 'active' && (
+          <div className="requests-grid">
+            {activeRequests.map(request => (
+              <div key={request.id} className={`request-card ${request.urgency}`}>
+                <div className="request-header">
+                  <span className="blood-type">{request.bloodType}</span>
+                  <span className="urgency-badge">{request.urgency}</span>
+                </div>
+                <div className="request-details">
+                  <p><strong>Units needed:</strong> {request.units}</p>
+                  <p><strong>Responses:</strong> {request.responses || 0}</p>
+                  <p className="description">{request.description}</p>
+                  <button 
+                    onClick={() => handleViewResponses(request)} 
+                    className="view-responses-btn"
+                  >
+                    View Responses ({request.responses || 0})
+                  </button>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        )}
 
-      {/* Donation History Section */}
-      <div className="dashboard-section">
-        <h2>Donation History</h2>
-        <div className="donations-grid">
-          {donationHistory.map(donation => (
-            <div key={donation.id} className="donation-card">
-              <div className="donation-header">
-                <span className="blood-type">{donation.blood_type}</span>
-                <span className="donation-date">
-                  {new Date(donation.donation_date).toLocaleDateString()}
+        {activeTab === 'fulfilled' && (
+          <div className="fulfilled-requests">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Blood Type</th>
+                  <th>Units</th>
+                  <th>Donor</th>
+                  <th>Fulfilled Date</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fulfilledRequests.map(request => (
+                  <tr key={request.id}>
+                    <td className="blood-type-cell">{request.bloodType}</td>
+                    <td>{request.units}</td>
+                    <td>{request.donorName}</td>
+                    <td>{new Date(request.fulfilledAt).toLocaleDateString()}</td>
+                    <td>{request.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'donations' && (
+          <div className="donation-history">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Donor</th>
+                  <th>Blood Type</th>
+                  <th>Units</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {donationHistory.map(donation => (
+                  <tr key={donation.id}>
+                    <td>{new Date(donation.donation_date).toLocaleDateString()}</td>
+                    <td>{donation.donor_name}</td>
+                    <td className="blood-type-cell">{donation.blood_type}</td>
+                    <td>{donation.units}</td>
+                    <td>
+                      <span className={`status-badge ${donation.status}`}>
+                        {donation.status}
                       </span>
-                    </div>
-              <div className="donation-details">
-                <p>Donor: {donation.donor_name}</p>
-                <p>Units: {donation.units}</p>
-                <p>Status: {donation.status}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Responses Modal */}
       {showResponsesModal && selectedRequest && (
         <div className="modal">
           <div className="modal-content">
-            <h3>Responses for {selectedRequest.bloodType} Request</h3>
+            <div className="modal-header">
+              <h3>Responses for {selectedRequest.bloodType} Request</h3>
+              <p className="request-details">
+                Units needed: {selectedRequest.units} | 
+                Urgency: {selectedRequest.urgency}
+              </p>
+            </div>
+            
             {loadingResponses ? (
-              <div>Loading responses...</div>
+              <div className="loading-spinner">Loading responses...</div>
+            ) : responses.length === 0 ? (
+              <div className="no-responses">
+                No responses received yet
+              </div>
             ) : (
               <div className="responses-list">
                 {responses.map(response => (
                   <div key={response.id} className="response-item">
                     <div className="response-header">
-                      <h4>{response.donor_name}</h4>
-                      <span className={`status ${response.status}`}>{response.status}</span>
+                      <div className="donor-info">
+                        <h4>{response.donor_name}</h4>
+                        <span className="blood-type">{response.blood_type}</span>
+                      </div>
+                      <span className={`status ${response.status}`}>
+                        {response.status}
+                      </span>
+                    </div>
+                    <div className="response-details">
+                      <p>Distance: {response.distance}km</p>
+                      <p>Available Units: {response.available_units}</p>
+                      {response.note && <p>Note: {response.note}</p>}
                     </div>
                     <div className="response-actions">
                       {response.status === 'pending' && (
@@ -237,6 +335,12 @@ function HospitalDashboard() {
                           Accept Response
                         </button>
                       )}
+                      <button 
+                        onClick={() => handleContactDonor(response.donor_id)}
+                        className="contact-btn"
+                      >
+                        Contact Donor
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -248,8 +352,6 @@ function HospitalDashboard() {
           </div>
         </div>
       )}
-
-      {error && <div className="error-toast">{error}</div>}
     </div>
   )
 }
