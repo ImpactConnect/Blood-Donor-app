@@ -1,63 +1,61 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import useGeolocation from '../../hooks/useGeolocation'
 import { donorService } from '../../services/donor.service'
 import './Donor.css'
 
 function DonorDashboard() {
   const { user } = useAuth()
-  const [isAvailable, setIsAvailable] = useState(false)
+  const [profile, setProfile] = useState(null)
   const [donations, setDonations] = useState([])
-  const [nearbyRequests, setNearbyRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const { location, error: locationError } = useGeolocation()
-  const [address, setAddress] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedProfile, setEditedProfile] = useState(null)
 
   useEffect(() => {
-    if (location) {
-      setError(null)
-      donorService.updateProfile({
-        latitude: location.latitude,
-        longitude: location.longitude
-      })
-      .catch(err => {
-        console.error('Error updating location:', err)
-        setError('Failed to update location')
-      })
-    }
-  }, [location])
-
-  useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchDonorData = async () => {
       try {
         setLoading(true)
         setError(null)
-        const [donationsData, requestsData] = await Promise.all([
-          donorService.getDonationHistory(),
-          donorService.getNearbyRequests()
-        ])
         
+        // Fetch donor profile
+        const profileData = await donorService.getProfile()
+        setProfile(profileData)
+        setEditedProfile(profileData)
+        
+        // Fetch donation history
+        const donationsData = await donorService.getDonationHistory()
         setDonations(donationsData)
-        setNearbyRequests(requestsData)
       } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-        setError('Failed to load dashboard data')
+        console.error('Error fetching donor data:', error)
+        setError('Failed to load donor information')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchDashboardData()
-  }, [location])
+    fetchDonorData()
+  }, [])
 
-  const handleAvailabilityToggle = async () => {
+  const handleEditProfile = () => {
+    setIsEditing(true)
+  }
+
+  const handleSaveProfile = async () => {
     try {
-      await donorService.toggleAvailability(!isAvailable)
-      setIsAvailable(!isAvailable)
+      setError(null)
+      await donorService.updateProfile(editedProfile)
+      setProfile(editedProfile)
+      setIsEditing(false)
     } catch (error) {
-      console.error('Error updating availability:', error)
+      console.error('Error updating profile:', error)
+      setError('Failed to update profile')
     }
+  }
+
+  const handleCancelEdit = () => {
+    setEditedProfile(profile)
+    setIsEditing(false)
   }
 
   if (loading) {
@@ -68,72 +66,140 @@ function DonorDashboard() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="dashboard-container">
+        <div className="error-message">{error}</div>
+      </div>
+    )
+  }
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h1>Welcome, {user?.name}</h1>
-        {locationError && (
-          <div className="location-error">
-            Please enable location services to see nearby requests
-          </div>
-        )}
-        <div className="availability-toggle">
-          <label className="switch">
-            <input
-              type="checkbox"
-              checked={isAvailable}
-              onChange={handleAvailabilityToggle}
-            />
-            <span className="slider round"></span>
-          </label>
-          <span>Available for donation</span>
-        </div>
+        <h1>Donor Dashboard</h1>
       </div>
 
       <div className="dashboard-grid">
-        <div className="dashboard-card">
-          <h2>Your Profile</h2>
-          <div className="profile-info">
-            <p><strong>Blood Type:</strong> {user?.bloodType}</p>
-            <p><strong>Location:</strong> {address || 'Updating...'}</p>
-            <p><strong>Last Donation:</strong> {donations[0]?.date || 'No donations yet'}</p>
-          </div>
-        </div>
-
-        <div className="dashboard-card">
-          <h2>Donation History</h2>
-          <div className="donation-list">
-            {donations.length > 0 ? (
-              donations.map(donation => (
-                <div key={donation.id} className="donation-item">
-                  <div className="donation-date">{new Date(donation.date).toLocaleDateString()}</div>
-                  <div className="donation-hospital">{donation.hospitalName}</div>
-                  <div className="donation-status">{donation.status}</div>
-                </div>
-              ))
+        {/* Profile Card */}
+        <div className="dashboard-card profile-card">
+          <div className="card-header">
+            <h2>Profile Information</h2>
+            {!isEditing ? (
+              <button className="edit-btn" onClick={handleEditProfile}>
+                Edit Profile
+              </button>
             ) : (
-              <p>No donation history yet</p>
+              <div className="edit-actions">
+                <button className="save-btn" onClick={handleSaveProfile}>
+                  Save
+                </button>
+                <button className="cancel-btn" onClick={handleCancelEdit}>
+                  Cancel
+                </button>
+              </div>
             )}
           </div>
+
+          {isEditing ? (
+            <div className="profile-edit-form">
+              <div className="form-group">
+                <label>Name</label>
+                <input
+                  type="text"
+                  value={editedProfile.name}
+                  onChange={(e) => setEditedProfile({
+                    ...editedProfile,
+                    name: e.target.value
+                  })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Phone</label>
+                <input
+                  type="tel"
+                  value={editedProfile.phone}
+                  onChange={(e) => setEditedProfile({
+                    ...editedProfile,
+                    phone: e.target.value
+                  })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Address</label>
+                <textarea
+                  value={editedProfile.address || ''}
+                  onChange={(e) => setEditedProfile({
+                    ...editedProfile,
+                    address: e.target.value
+                  })}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="profile-info">
+              <div className="info-group">
+                <label>Name:</label>
+                <span>{profile.name}</span>
+              </div>
+              <div className="info-group">
+                <label>Email:</label>
+                <span>{profile.email}</span>
+              </div>
+              <div className="info-group">
+                <label>Blood Type:</label>
+                <span className="blood-type">{profile.blood_type}</span>
+              </div>
+              <div className="info-group">
+                <label>Phone:</label>
+                <span>{profile.phone}</span>
+              </div>
+              <div className="info-group">
+                <label>Address:</label>
+                <span>{profile.address || 'Not provided'}</span>
+              </div>
+              <div className="info-group">
+                <label>Last Donation:</label>
+                <span>
+                  {profile.last_donation_date 
+                    ? new Date(profile.last_donation_date).toLocaleDateString()
+                    : 'No donations yet'}
+                </span>
+              </div>
+              <div className="info-group">
+                <label>Status:</label>
+                <span className={`status ${profile.is_available ? 'available' : 'unavailable'}`}>
+                  {profile.is_available ? 'Available to Donate' : 'Not Available'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Donation History Card */}
         <div className="dashboard-card">
-          <h2>Nearby Blood Requests</h2>
-          <div className="requests-list">
-            {nearbyRequests.map(request => (
-              <div key={request.id} className="request-item">
-                <div className="request-header">
-                  <span className="blood-type">{request.bloodType}</span>
-                  <span className={`urgency ${request.urgency}`}>
-                    {request.urgency}
-                  </span>
+          <h2>Donation History</h2>
+          {donations.length > 0 ? (
+            <div className="donations-list">
+              {donations.map(donation => (
+                <div key={donation.id} className="donation-item">
+                  <div className="donation-header">
+                    <span className="blood-type">{donation.blood_type}</span>
+                    <span className="donation-date">
+                      {new Date(donation.donation_date).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="donation-details">
+                    <p>Hospital: {donation.hospital_name}</p>
+                    <p>Units: {donation.units}</p>
+                    {donation.notes && <p>Notes: {donation.notes}</p>}
+                  </div>
                 </div>
-                <div className="request-hospital">{request.hospitalName}</div>
-                <div className="request-distance">{request.distance}km away</div>
-                <button className="respond-btn">Respond to Request</button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="no-donations">No donation history available</p>
+          )}
         </div>
       </div>
     </div>

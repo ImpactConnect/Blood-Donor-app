@@ -94,5 +94,16 @@ export const hospitalService = {
       console.error('Error fetching responses:', error)
       throw new Error(error.response?.data?.error || 'Failed to fetch responses')
     }
+  },
+
+  async getDonorContact(donorId) {
+    try {
+      const response = await api.get(`/hospital/donor/${donorId}/contact`)
+      console.log('Donor contact response:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('Error getting donor contact:', error)
+      throw new Error(error.response?.data?.error || 'Failed to get donor contact')
+    }
   }
 } 

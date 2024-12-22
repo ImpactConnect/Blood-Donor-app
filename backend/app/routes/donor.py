@@ -2,12 +2,16 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import Donor, BloodRequest, DonorResponse, Donation
+import logging
+
+logger = logging.getLogger(__name__)
 
 donor_bp = Blueprint('donor', __name__)
 
-@donor_bp.route('/profile', methods=['GET', 'PUT'])
+@donor_bp.route('/profile', methods=['GET'])
 @jwt_required()
-def profile():
+def get_profile():
+    """Get donor profile information."""
     try:
         donor_id = get_jwt_identity()
         donor = Donor.query.get(int(donor_id))
@@ -15,20 +19,85 @@ def profile():
         if not donor:
             return jsonify({'error': 'Donor not found'}), 404
 
-        if request.method == 'GET':
-            return jsonify(donor.to_dict()), 200
+        return jsonify({
+            'id': donor.id,
+            'name': donor.name,
+            'email': donor.email,
+            'blood_type': donor.blood_type,
+            'phone': donor.phone or '',
+            'address': donor.address or '',
+            'is_available': donor.is_available,
+            'last_donation_date': donor.last_donation_date.isoformat() if donor.last_donation_date else None
+        }), 200
 
-        # Handle PUT request
+    except Exception as e:
+        logger.error(f"Error getting donor profile: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@donor_bp.route('/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    """Update donor profile information."""
+    try:
+        donor_id = get_jwt_identity()
+        donor = Donor.query.get(int(donor_id))
+        
+        if not donor:
+            return jsonify({'error': 'Donor not found'}), 404
+
         data = request.get_json()
-        for field in ['name', 'phone', 'latitude', 'longitude']:
+        
+        # Update fields
+        for field in ['name', 'phone', 'address', 'is_available']:
             if field in data:
                 setattr(donor, field, data[field])
 
         db.session.commit()
-        return jsonify({'message': 'Profile updated successfully'}), 200
+        
+        return jsonify({
+            'message': 'Profile updated successfully',
+            'donor': {
+                'id': donor.id,
+                'name': donor.name,
+                'email': donor.email,
+                'blood_type': donor.blood_type,
+                'phone': donor.phone,
+                'address': donor.address,
+                'is_available': donor.is_available,
+                'last_donation_date': donor.last_donation_date.isoformat() if donor.last_donation_date else None
+            }
+        }), 200
 
     except Exception as e:
         db.session.rollback()
+        logger.error(f"Error updating donor profile: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@donor_bp.route('/donations', methods=['GET'])
+@jwt_required()
+def get_donations():
+    """Get donor's donation history."""
+    try:
+        donor_id = get_jwt_identity()
+        donor = Donor.query.get(int(donor_id))
+        
+        if not donor:
+            return jsonify({'error': 'Donor not found'}), 404
+
+        donations = Donation.query.filter_by(donor_id=donor.id)\
+            .order_by(Donation.donation_date.desc()).all()
+
+        return jsonify([{
+            'id': d.id,
+            'blood_type': d.blood_type,
+            'units': d.units,
+            'donation_date': d.donation_date.isoformat(),
+            'hospital_name': d.hospital.name,
+            'notes': d.notes
+        } for d in donations]), 200
+
+    except Exception as e:
+        logger.error(f"Error getting donation history: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @donor_bp.route('/availability', methods=['POST'])
@@ -52,19 +121,6 @@ def toggle_availability():
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@donor_bp.route('/donations', methods=['GET'])
-@jwt_required()
-def get_donations():
-    try:
-        donor_id = get_jwt_identity()
-        donations = Donation.query.filter_by(donor_id=int(donor_id))\
-            .order_by(Donation.donation_date.desc()).all()
-        
-        return jsonify([d.to_dict() for d in donations]), 200
-
-    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @donor_bp.route('/nearby-requests', methods=['GET'])

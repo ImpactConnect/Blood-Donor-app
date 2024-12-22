@@ -21,6 +21,8 @@ function HospitalDashboard() {
   const [showResponsesModal, setShowResponsesModal] = useState(false)
   const [responses, setResponses] = useState([])
   const [loadingResponses, setLoadingResponses] = useState(false)
+  const [selectedDonor, setSelectedDonor] = useState(null)
+  const [showDonorModal, setShowDonorModal] = useState(false)
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -109,6 +111,29 @@ function HospitalDashboard() {
       console.error('Error fetching responses:', error)
     } finally {
       setLoadingResponses(false)
+    }
+  }
+
+  const handleContactDonor = async (donorId) => {
+    try {
+      setLoading(true)
+      setError(null)
+      console.log('Fetching donor contact info for:', donorId)
+      
+      const donorData = await hospitalService.getDonorContact(donorId)
+      console.log('Donor contact data:', donorData)
+      
+      if (!donorData) {
+        throw new Error('No donor data received')
+      }
+      
+      setSelectedDonor(donorData)
+      setShowDonorModal(true)
+    } catch (error) {
+      console.error('Error getting donor contact:', error)
+      setError('Failed to get donor contact information')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -236,7 +261,12 @@ function HospitalDashboard() {
                         {donor.distance ? `${donor.distance}km away` : 'Distance unknown'}
                       </span>
                     </div>
-                    <button className="contact-btn">Contact Donor</button>
+                    <button 
+                      className="contact-btn"
+                      onClick={() => handleContactDonor(donor.id)}
+                    >
+                      Contact Donor
+                    </button>
                   </div>
                 ))}
               </div>
@@ -271,7 +301,7 @@ function HospitalDashboard() {
                     <div className="response-actions">
                       <button 
                         className="contact-donor-btn"
-                        onClick={() => handleContactDonor(response)}
+                        onClick={() => handleContactDonor(response.donor_id)}
                       >
                         Contact Donor
                       </button>
@@ -289,6 +319,38 @@ function HospitalDashboard() {
               Close
             </button>
           </div>
+        </div>
+      )}
+
+      {showDonorModal && selectedDonor && (
+        <div className="modal">
+          <div className="modal-content">
+            <h3>Contact {selectedDonor.name}</h3>
+            <div className="donor-info">
+              <p><strong>Blood Type:</strong> {selectedDonor.blood_type}</p>
+              <p><strong>Phone:</strong> {selectedDonor.phone || 'Not provided'}</p>
+              <p><strong>Email:</strong> {selectedDonor.email || 'Not provided'}</p>
+              <p><strong>Address:</strong> {selectedDonor.address || 'Not provided'}</p>
+              <p><strong>Status:</strong> {selectedDonor.is_available ? 'Available' : 'Not Available'}</p>
+            </div>
+            <div className="modal-actions">
+              <button 
+                className="close-modal-btn"
+                onClick={() => {
+                  setShowDonorModal(false)
+                  setSelectedDonor(null)
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="error-toast">
+          {error}
         </div>
       )}
     </div>

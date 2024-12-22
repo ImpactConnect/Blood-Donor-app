@@ -270,4 +270,34 @@ def get_hospital_contact(hospital_id):
 
     except Exception as e:
         logger.error(f"Error getting hospital contact: {str(e)}")
-        return jsonify({'error': str(e)}), 500 
+        return jsonify({'error': str(e)}), 500
+
+@hospital_bp.route('/donor/<int:donor_id>/contact', methods=['GET'])
+@jwt_required()
+def get_donor_contact(donor_id):
+    """Get donor contact information."""
+    try:
+        # Verify the requesting user is a hospital
+        hospital_id = get_jwt_identity()
+        hospital = Hospital.query.get(int(hospital_id))
+        
+        if not hospital:
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        donor = Donor.query.get(donor_id)
+        if not donor:
+            return jsonify({'error': 'Donor not found'}), 404
+
+        return jsonify({
+            'id': donor.id,
+            'name': donor.name,
+            'phone': donor.phone,
+            'email': donor.email,
+            'address': donor.address,
+            'blood_type': donor.blood_type,
+            'is_available': donor.is_available
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error getting donor contact: {str(e)}")
+        return jsonify({'error': str(e)}), 500

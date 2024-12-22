@@ -44,9 +44,9 @@ class DonorResponse(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Update relationships
+    # Update relationships to use back_populates instead of backref
     request = db.relationship('BloodRequest', back_populates='responses')
-    donor = db.relationship('Donor', backref='responses')
+    donor = db.relationship('Donor', back_populates='responses')
 
     def to_dict(self):
         return {
