@@ -43,19 +43,19 @@
   border-radius: 8px;
   padding: 1.5rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border-left: 4px solid;
+  border-left: 4px solid transparent;
 }
 
 .emergency-card.critical {
-  border-left-color: #f5222d;
+  border-left-color: var(--error);
 }
 
 .emergency-card.urgent {
-  border-left-color: #fa8c16;
+  border-left-color: var(--warning);
 }
 
 .emergency-card.normal {
-  border-left-color: #1890ff;
+  border-left-color: var(--success);
 }
 
 .emergency-card-header {
@@ -72,25 +72,25 @@
 }
 
 .urgency-badge {
-  padding: 0.25rem 0.5rem;
+  padding: 4px 8px;
   border-radius: 4px;
   font-size: 0.75rem;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 .urgency-badge.critical {
-  background: #fff1f0;
-  color: #f5222d;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error);
 }
 
 .urgency-badge.urgent {
-  background: #fff7e6;
-  color: #fa8c16;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
 }
 
 .urgency-badge.normal {
-  background: #e6f7ff;
-  color: #1890ff;
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--success);
 }
 
 .hospital-info {

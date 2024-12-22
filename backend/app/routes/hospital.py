@@ -301,3 +301,46 @@ def get_donor_contact(donor_id):
     except Exception as e:
         logger.error(f"Error getting donor contact: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@hospital_bp.route('/requests/<int:request_id>/responses/<int:response_id>/accept', methods=['POST'])
+@jwt_required()
+def accept_donor_response(request_id, response_id):
+    """Accept a donor's response to a blood request."""
+    try:
+        hospital_id = get_jwt_identity()
+        hospital = Hospital.query.get(int(hospital_id))
+        
+        if not hospital:
+            return jsonify({'error': 'Hospital not found'}), 404
+
+        blood_request = BloodRequest.query.get(request_id)
+        if not blood_request or blood_request.hospital_id != hospital.id:
+            return jsonify({'error': 'Request not found'}), 404
+
+        donor_response = DonorResponse.query.get(response_id)
+        if not donor_response or donor_response.request_id != request_id:
+            return jsonify({'error': 'Response not found'}), 404
+
+        # Update response status
+        donor_response.status = 'accepted'
+        
+        # Mark request as fulfilled if needed
+        blood_request.status = 'fulfilled'
+        
+        # Update donor availability
+        donor = Donor.query.get(donor_response.donor_id)
+        if donor:
+            donor.is_available = False
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Donor response accepted successfully',
+            'request': blood_request.to_dict(),
+            'response': donor_response.to_dict()
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error accepting donor response: {str(e)}")
+        return jsonify({'error': str(e)}), 500

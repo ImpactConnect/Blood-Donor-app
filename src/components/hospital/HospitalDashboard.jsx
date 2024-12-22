@@ -137,6 +137,29 @@ function HospitalDashboard() {
     }
   }
 
+  const handleAcceptResponse = async (requestId, responseId) => {
+    try {
+      setLoading(true)
+      const result = await hospitalService.acceptDonorResponse(requestId, responseId)
+      
+      // Update the requests list
+      setActiveRequests(prev => prev.filter(req => req.id !== requestId))
+      
+      // Close the responses modal
+      setShowResponsesModal(false)
+      setSelectedRequest(null)
+      
+      // Show success message
+      // Assuming you have a notification system
+      showNotification('Success', 'Donor response accepted successfully')
+    } catch (error) {
+      console.error('Error accepting response:', error)
+      setError('Failed to accept donor response')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
@@ -305,6 +328,14 @@ function HospitalDashboard() {
                       >
                         Contact Donor
                       </button>
+                      {response.status === 'pending' && (
+                        <button 
+                          className="accept-response-btn"
+                          onClick={() => handleAcceptResponse(selectedRequest.id, response.id)}
+                        >
+                          Accept Response
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

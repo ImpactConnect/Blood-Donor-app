@@ -16,21 +16,16 @@ function EmergencyRequests() {
       try {
         setLoading(true)
         setError(null)
-        console.log('Fetching emergency requests...')
+        console.log('Fetching requests...')
         
         const response = await hospitalService.getActiveRequests()
         console.log('All requests:', response)
         
-        // Filter for urgent and critical requests
-        const urgentRequests = response.filter(req => 
-          req.urgency === 'urgent' || req.urgency === 'critical'
-        )
-        console.log('Urgent requests:', urgentRequests)
-        
-        setEmergencyRequests(urgentRequests)
+        // No longer filtering by urgency - show all requests
+        setEmergencyRequests(response)
       } catch (error) {
-        console.error('Error fetching emergency requests:', error)
-        setError('Failed to load emergency requests')
+        console.error('Error fetching requests:', error)
+        setError('Failed to load requests')
       } finally {
         setLoading(false)
       }
@@ -86,11 +81,11 @@ function EmergencyRequests() {
   return (
     <div className="emergency-container">
       <div className="emergency-header">
-        <h1>Emergency Blood Requests</h1>
+        <h1>Blood Requests</h1>
         <div className="emergency-stats">
           <div className="stat-item">
             <span className="stat-value">{emergencyRequests.length}</span>
-            <span className="stat-label">Active Emergency Requests</span>
+            <span className="stat-label">Active Requests</span>
           </div>
         </div>
       </div>
@@ -100,7 +95,7 @@ function EmergencyRequests() {
           emergencyRequests.map(request => (
             <div 
               key={request.id} 
-              className={`emergency-card ${request.urgency}`}
+              className={`emergency-card ${request.urgency.toLowerCase()}`}
             >
               <div className="emergency-card-header">
                 <span className="blood-type">{request.bloodType}</span>
@@ -163,8 +158,8 @@ function EmergencyRequests() {
           ))
         ) : (
           <div className="no-requests">
-            <h2>No Emergency Requests</h2>
-            <p>There are currently no urgent or critical blood requests.</p>
+            <h2>No Active Requests</h2>
+            <p>There are currently no blood requests.</p>
           </div>
         )}
       </div>

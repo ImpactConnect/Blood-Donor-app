@@ -105,5 +105,16 @@ export const hospitalService = {
       console.error('Error getting donor contact:', error)
       throw new Error(error.response?.data?.error || 'Failed to get donor contact')
     }
+  },
+
+  async acceptDonorResponse(requestId, responseId) {
+    try {
+      const response = await api.post(`/hospital/requests/${requestId}/responses/${responseId}/accept`)
+      console.log('Accept response:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('Error accepting donor response:', error)
+      throw new Error(error.response?.data?.error || 'Failed to accept donor response')
+    }
   }
 } 
