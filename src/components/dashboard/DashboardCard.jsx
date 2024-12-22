@@ -1,3 +1,5 @@
+import PropTypes from 'prop-types'
+
 function DashboardCard({ title, children }) {
   return (
     <div className="card">
@@ -5,6 +7,11 @@ function DashboardCard({ title, children }) {
       {children}
     </div>
   )
+}
+
+DashboardCard.propTypes = {
+  title: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired
 }
 
 export default DashboardCard 

@@ -2,7 +2,9 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import Hospital, BloodRequest, DonorResponse, Donation, Donor
+from app.services.notification import NotificationService
 import logging
+from datetime import datetime
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -314,33 +316,112 @@ def accept_donor_response(request_id, response_id):
             return jsonify({'error': 'Hospital not found'}), 404
 
         blood_request = BloodRequest.query.get(request_id)
-        if not blood_request or blood_request.hospital_id != hospital.id:
+        if not blood_request:
             return jsonify({'error': 'Request not found'}), 404
+            
+        if blood_request.hospital_id != hospital.id:
+            return jsonify({'error': 'Unauthorized to accept this response'}), 403
 
         donor_response = DonorResponse.query.get(response_id)
         if not donor_response or donor_response.request_id != request_id:
             return jsonify({'error': 'Response not found'}), 404
 
+        # Check if request is already fulfilled
+        if blood_request.status == 'fulfilled':
+            return jsonify({'error': 'Request is already fulfilled'}), 400
+
+        # Check if response is already accepted
+        if donor_response.status == 'accepted':
+            return jsonify({'error': 'Response is already accepted'}), 400
+
         # Update response status
         donor_response.status = 'accepted'
         
-        # Mark request as fulfilled if needed
+        # Mark request as fulfilled
         blood_request.status = 'fulfilled'
         
         # Update donor availability
         donor = Donor.query.get(donor_response.donor_id)
         if donor:
             donor.is_available = False
+            
+        # Create a donation record
+        donation = Donation(
+            donor_id=donor_response.donor_id,
+            hospital_id=hospital.id,
+            request_id=request_id,
+            blood_type=blood_request.blood_type,
+            units=blood_request.units_needed,
+            donation_date=datetime.utcnow(),
+            status='scheduled'
+        )
         
+        db.session.add(donation)
         db.session.commit()
+        
+        # Send notifications
+        notification_service = NotificationService()
+        notification_service.send_donation_accepted_notification(donor.id, hospital.name)
         
         return jsonify({
             'message': 'Donor response accepted successfully',
             'request': blood_request.to_dict(),
-            'response': donor_response.to_dict()
+            'response': donor_response.to_dict(),
+            'donation': donation.to_dict()
         }), 200
 
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error accepting donor response: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@hospital_bp.route('/requests/fulfilled', methods=['GET'])
+@jwt_required()
+def get_fulfilled_requests():
+    """Get hospital's fulfilled requests."""
+    try:
+        hospital_id = get_jwt_identity()
+        hospital = Hospital.query.get(int(hospital_id))
+        
+        if not hospital:
+            return jsonify({'error': 'Hospital not found'}), 404
+
+        fulfilled_requests = BloodRequest.query.filter_by(
+            hospital_id=hospital.id,
+            status='fulfilled'
+        ).order_by(BloodRequest.updated_at.desc()).all()
+        
+        return jsonify([{
+            'id': req.id,
+            'bloodType': req.blood_type,
+            'units': req.units_needed,
+            'urgency': req.urgency_level,
+            'fulfilledAt': req.updated_at.isoformat(),
+            'donorName': req.donations[0].donor.name if req.donations else None,
+            'description': req.description
+        } for req in fulfilled_requests]), 200
+
+    except Exception as e:
+        logger.error(f"Error fetching fulfilled requests: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@hospital_bp.route('/donations', methods=['GET'])
+@jwt_required()
+def get_donation_history():
+    """Get hospital's donation history."""
+    try:
+        hospital_id = get_jwt_identity()
+        hospital = Hospital.query.get(int(hospital_id))
+        
+        if not hospital:
+            return jsonify({'error': 'Hospital not found'}), 404
+
+        donations = Donation.query.filter_by(
+            hospital_id=hospital.id
+        ).order_by(Donation.donation_date.desc()).all()
+        
+        return jsonify([donation.to_dict() for donation in donations]), 200
+
+    except Exception as e:
+        logger.error(f"Error fetching donation history: {str(e)}")
         return jsonify({'error': str(e)}), 500

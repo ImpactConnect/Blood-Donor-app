@@ -110,11 +110,36 @@ export const hospitalService = {
   async acceptDonorResponse(requestId, responseId) {
     try {
       const response = await api.post(`/hospital/requests/${requestId}/responses/${responseId}/accept`)
+      if (!response.data) {
+        throw new Error('No data received from server')
+      }
       console.log('Accept response:', response.data)
       return response.data
     } catch (error) {
-      console.error('Error accepting donor response:', error)
+      console.error('Error accepting donor response:', error.response || error)
       throw new Error(error.response?.data?.error || 'Failed to accept donor response')
+    }
+  },
+
+  async getFulfilledRequests() {
+    try {
+      const response = await api.get('/hospital/requests/fulfilled')
+      console.log('Fulfilled requests:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('Error fetching fulfilled requests:', error)
+      throw new Error(error.response?.data?.error || 'Failed to fetch fulfilled requests')
+    }
+  },
+
+  async getDonationHistory() {
+    try {
+      const response = await api.get('/hospital/donations')
+      console.log('Donation history:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('Error fetching donation history:', error)
+      throw new Error(error.response?.data?.error || 'Failed to fetch donation history')
     }
   }
 } 

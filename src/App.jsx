@@ -18,8 +18,8 @@ import './components/dashboard/Dashboard.css'
 
 function App() {
   return (
-    <ErrorBoundary>
-      <Router>
+    <Router>
+      <ErrorBoundary>
         <AuthProvider>
           <NotificationProvider>
             <div className="app-container">
@@ -52,8 +52,8 @@ function App() {
             </div>
           </NotificationProvider>
         </AuthProvider>
-      </Router>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </Router>
   )
 }
 

@@ -39,4 +39,13 @@ def create_app(config_class=Config):
         # Create database tables
         db.create_all()
 
+    @app.errorhandler(Exception)
+    def handle_error(error):
+        """Global error handler."""
+        logger.error(f"Unhandled error: {str(error)}")
+        return jsonify({
+            'error': 'An unexpected error occurred',
+            'message': str(error)
+        }), 500
+
     return app 

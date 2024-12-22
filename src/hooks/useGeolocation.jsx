@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const useGeolocation = (options = {}) => {
+const useGeolocation = () => {
   const [location, setLocation] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -34,12 +34,11 @@ const useGeolocation = (options = {}) => {
       handleError,
       {
         enableHighAccuracy: true,
-        ...options
       }
     )
 
     return () => navigator.geolocation.clearWatch(watchId)
-  }, [options])
+  }, [])
 
   return { location, error, loading }
 }

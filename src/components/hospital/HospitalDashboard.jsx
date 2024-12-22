@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import useGeolocation from '../../hooks/useGeolocation'
@@ -7,7 +8,8 @@ import './Hospital.css'
 function HospitalDashboard() {
   const { user } = useAuth()
   const [activeRequests, setActiveRequests] = useState([])
-  const [availableDonors, setAvailableDonors] = useState([])
+  const [fulfilledRequests, setFulfilledRequests] = useState([])
+  const [donationHistory, setDonationHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const { location } = useGeolocation()
@@ -21,80 +23,47 @@ function HospitalDashboard() {
   const [showResponsesModal, setShowResponsesModal] = useState(false)
   const [responses, setResponses] = useState([])
   const [loadingResponses, setLoadingResponses] = useState(false)
-  const [selectedDonor, setSelectedDonor] = useState(null)
-  const [showDonorModal, setShowDonorModal] = useState(false)
 
   useEffect(() => {
-    const fetchRequests = async () => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
       try {
         setLoading(true)
         setError(null)
-        const requestsData = await hospitalService.getActiveRequests()
-        setActiveRequests(Array.isArray(requestsData) ? requestsData : [])
-      } catch (error) {
-        console.error('Error fetching requests:', error)
-        setError(error.message || 'Failed to load requests')
+      
+      const [activeReqs, fulfilledReqs, donations] = await Promise.all([
+        hospitalService.getActiveRequests(),
+        hospitalService.getFulfilledRequests(),
+        hospitalService.getDonationHistory()
+      ])
+      
+      setActiveRequests(activeReqs)
+      setFulfilledRequests(fulfilledReqs)
+      setDonationHistory(donations)
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err)
+      setError(err.message)
       } finally {
         setLoading(false)
       }
-    }
-
-    fetchRequests()
-  }, [])
-
-  useEffect(() => {
-    const fetchDonors = async () => {
-      if (activeRequests.length > 0) {
-        try {
-          const donorsData = await hospitalService.getAvailableDonors()
-          setAvailableDonors(Array.isArray(donorsData) ? donorsData : [])
-        } catch (error) {
-          console.error('Error fetching donors:', error)
-        }
-      } else {
-        setAvailableDonors([])
-      }
-    }
-
-    fetchDonors()
-  }, [activeRequests])
-
-  if (loading) {
-    return (
-      <div className="dashboard-container">
-        <div className="loading-spinner">Loading...</div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="dashboard-container">
-        <div className="error-message">{error}</div>
-      </div>
-    )
   }
 
   const handleNewRequest = async (e) => {
     e.preventDefault()
     try {
         setError(null)
-        console.log('Submitting request:', newRequest)
         const response = await hospitalService.createBloodRequest(newRequest)
-        console.log('Request created:', response)
-        
-        if (response.request) {
-            setActiveRequests(prev => [...prev, response.request])
+      await fetchDashboardData() // Refresh all data
             setNewRequest({
                 bloodType: '',
                 units: 1,
                 urgency: 'normal',
                 description: ''
             })
-        }
     } catch (err) {
-        console.error('Error creating request:', err)
-        setError(err.message || 'Failed to create request')
+      setError(err.message)
     }
   }
 
@@ -103,120 +72,72 @@ function HospitalDashboard() {
       setLoadingResponses(true)
       setSelectedRequest(request)
       setShowResponsesModal(true)
-      
-      const response = await hospitalService.getRequestResponses(request.id)
-      console.log('Request responses:', response)
-      setResponses(response)
-    } catch (error) {
-      console.error('Error fetching responses:', error)
+      const responseData = await hospitalService.getRequestResponses(request.id)
+      setResponses(responseData)
+    } catch (err) {
+      setError(err.message)
     } finally {
       setLoadingResponses(false)
-    }
-  }
-
-  const handleContactDonor = async (donorId) => {
-    try {
-      setLoading(true)
-      setError(null)
-      console.log('Fetching donor contact info for:', donorId)
-      
-      const donorData = await hospitalService.getDonorContact(donorId)
-      console.log('Donor contact data:', donorData)
-      
-      if (!donorData) {
-        throw new Error('No donor data received')
-      }
-      
-      setSelectedDonor(donorData)
-      setShowDonorModal(true)
-    } catch (error) {
-      console.error('Error getting donor contact:', error)
-      setError('Failed to get donor contact information')
-    } finally {
-      setLoading(false)
     }
   }
 
   const handleAcceptResponse = async (requestId, responseId) => {
     try {
       setLoading(true)
-      const result = await hospitalService.acceptDonorResponse(requestId, responseId)
-      
-      // Update the requests list
-      setActiveRequests(prev => prev.filter(req => req.id !== requestId))
-      
-      // Close the responses modal
+      setError(null)
+      await hospitalService.acceptDonorResponse(requestId, responseId)
+      await fetchDashboardData() // Refresh all data
       setShowResponsesModal(false)
       setSelectedRequest(null)
-      
-      // Show success message
-      // Assuming you have a notification system
-      showNotification('Success', 'Donor response accepted successfully')
-    } catch (error) {
-      console.error('Error accepting response:', error)
-      setError('Failed to accept donor response')
+    } catch (err) {
+      setError(err.message)
     } finally {
       setLoading(false)
     }
   }
 
+  if (loading) {
+    return <div className="loading">Loading...</div>
+  }
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h1>Hospital Dashboard - {user?.name}</h1>
+        <h1>Hospital Dashboard</h1>
       </div>
 
-      <div className="dashboard-grid">
-        <div className="dashboard-card">
+      {/* Create Request Section */}
+      <div className="dashboard-section">
           <h2>Create Blood Request</h2>
           <form onSubmit={handleNewRequest} className="request-form">
             <div className="form-group">
-              <label htmlFor="bloodType">Blood Type Needed</label>
+            <label>Blood Type</label>
               <select
-                id="bloodType"
                 value={newRequest.bloodType}
-                onChange={(e) => setNewRequest(prev => ({
-                  ...prev,
-                  bloodType: e.target.value
-                }))}
+              onChange={(e) => setNewRequest(prev => ({ ...prev, bloodType: e.target.value }))}
                 required
               >
                 <option value="">Select Blood Type</option>
-                <option value="A+">A+</option>
-                <option value="A-">A-</option>
-                <option value="B+">B+</option>
-                <option value="B-">B-</option>
-                <option value="AB+">AB+</option>
-                <option value="AB-">AB-</option>
-                <option value="O+">O+</option>
-                <option value="O-">O-</option>
+              {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
               </select>
             </div>
-
             <div className="form-group">
-              <label htmlFor="units">Units Required</label>
+            <label>Units Needed</label>
               <input
                 type="number"
-                id="units"
+              value={newRequest.units}
+              onChange={(e) => setNewRequest(prev => ({ ...prev, units: parseInt(e.target.value) }))}
                 min="1"
-                value={newRequest.units}
-                onChange={(e) => setNewRequest(prev => ({
-                  ...prev,
-                  units: parseInt(e.target.value)
-                }))}
                 required
               />
             </div>
-
             <div className="form-group">
-              <label htmlFor="urgency">Urgency Level</label>
+            <label>Urgency</label>
               <select
-                id="urgency"
                 value={newRequest.urgency}
-                onChange={(e) => setNewRequest(prev => ({
-                  ...prev,
-                  urgency: e.target.value
-                }))}
+              onChange={(e) => setNewRequest(prev => ({ ...prev, urgency: e.target.value }))}
                 required
               >
                 <option value="normal">Normal</option>
@@ -224,114 +145,94 @@ function HospitalDashboard() {
                 <option value="critical">Critical</option>
               </select>
             </div>
-
-            <div className="form-group">
-              <label htmlFor="description">Additional Details</label>
-              <textarea
-                id="description"
-                value={newRequest.description}
-                onChange={(e) => setNewRequest(prev => ({
-                  ...prev,
-                  description: e.target.value
-                }))}
-              />
-            </div>
-
-            <button type="submit" className="submit-btn">
-              Create Request
-            </button>
+          <button type="submit" className="submit-btn">Create Request</button>
           </form>
         </div>
 
-        <div className="dashboard-card">
+      {/* Active Requests Section */}
+      <div className="dashboard-section">
           <h2>Active Requests</h2>
-          <div className="requests-list">
+        <div className="requests-grid">
             {activeRequests.map(request => (
-              <div key={request.id} className="request-item">
+            <div key={request.id} className={`request-card ${request.urgency}`}>
                 <div className="request-header">
                   <span className="blood-type">{request.bloodType}</span>
-                  <span className={`urgency ${request.urgency}`}>
-                    {request.urgency}
-                  </span>
+                <span className="urgency-badge">{request.urgency}</span>
                 </div>
                 <div className="request-details">
                   <p>Units needed: {request.units}</p>
-                  <div className="request-actions">
-                    <button
-                      className="view-responses-btn"
-                      onClick={() => handleViewResponses(request)}
-                    >
-                      View Responses ({request.responses})
+                <p>Responses: {request.responses || 0}</p>
+                <button onClick={() => handleViewResponses(request)} className="view-responses-btn">
+                  View Responses
                     </button>
                   </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Fulfilled Requests Section */}
+      <div className="dashboard-section">
+        <h2>Fulfilled Requests</h2>
+        <div className="requests-grid">
+          {fulfilledRequests.map(request => (
+            <div key={request.id} className="request-card fulfilled">
+              <div className="request-header">
+                <span className="blood-type">{request.bloodType}</span>
+                <span className="status-badge">Fulfilled</span>
+              </div>
+              <div className="request-details">
+                <p>Units received: {request.units}</p>
+                <p>Fulfilled on: {new Date(request.fulfilledAt).toLocaleDateString()}</p>
+                <p>Donor: {request.donorName}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="dashboard-card">
-          <h2>Available Donors Nearby</h2>
-          {activeRequests.length > 0 ? (
-            availableDonors.length > 0 ? (
-              <div className="donors-list">
-                {availableDonors.map(donor => (
-                  <div key={donor.id} className="donor-item">
-                    <div className="donor-info">
-                      <span className="blood-type">{donor.bloodType}</span>
-                      <span className="donor-name">{donor.name}</span>
-                      <span className="donor-distance">
-                        {donor.distance ? `${donor.distance}km away` : 'Distance unknown'}
+      {/* Donation History Section */}
+      <div className="dashboard-section">
+        <h2>Donation History</h2>
+        <div className="donations-grid">
+          {donationHistory.map(donation => (
+            <div key={donation.id} className="donation-card">
+              <div className="donation-header">
+                <span className="blood-type">{donation.blood_type}</span>
+                <span className="donation-date">
+                  {new Date(donation.donation_date).toLocaleDateString()}
                       </span>
                     </div>
-                    <button 
-                      className="contact-btn"
-                      onClick={() => handleContactDonor(donor.id)}
-                    >
-                      Contact Donor
-                    </button>
-                  </div>
-                ))}
+              <div className="donation-details">
+                <p>Donor: {donation.donor_name}</p>
+                <p>Units: {donation.units}</p>
+                <p>Status: {donation.status}</p>
               </div>
-            ) : (
-              <p className="no-donors">No available donors found</p>
-            )
-          ) : (
-            <p className="no-donors">Create a blood request to see available donors</p>
-          )}
+            </div>
+          ))}
         </div>
       </div>
 
+      {/* Responses Modal */}
       {showResponsesModal && selectedRequest && (
         <div className="modal">
           <div className="modal-content">
             <h3>Responses for {selectedRequest.bloodType} Request</h3>
             {loadingResponses ? (
-              <div className="loading-spinner"></div>
-            ) : responses.length > 0 ? (
+              <div>Loading responses...</div>
+            ) : (
               <div className="responses-list">
                 {responses.map(response => (
                   <div key={response.id} className="response-item">
-                    <div className="donor-info">
+                    <div className="response-header">
                       <h4>{response.donor_name}</h4>
-                      <span className={`status ${response.status}`}>
-                        {response.status}
-                      </span>
-                    </div>
-                    <div className="response-details">
-                      <p>Responded: {new Date(response.created_at).toLocaleString()}</p>
+                      <span className={`status ${response.status}`}>{response.status}</span>
                     </div>
                     <div className="response-actions">
-                      <button 
-                        className="contact-donor-btn"
-                        onClick={() => handleContactDonor(response.donor_id)}
-                      >
-                        Contact Donor
-                      </button>
                       {response.status === 'pending' && (
                         <button 
-                          className="accept-response-btn"
                           onClick={() => handleAcceptResponse(selectedRequest.id, response.id)}
+                          className="accept-btn"
                         >
                           Accept Response
                         </button>
@@ -340,50 +241,15 @@ function HospitalDashboard() {
                   </div>
                 ))}
               </div>
-            ) : (
-              <p>No responses yet</p>
             )}
-            <button 
-              className="close-modal-btn"
-              onClick={() => setShowResponsesModal(false)}
-            >
+            <button onClick={() => setShowResponsesModal(false)} className="close-modal-btn">
               Close
             </button>
           </div>
         </div>
       )}
 
-      {showDonorModal && selectedDonor && (
-        <div className="modal">
-          <div className="modal-content">
-            <h3>Contact {selectedDonor.name}</h3>
-            <div className="donor-info">
-              <p><strong>Blood Type:</strong> {selectedDonor.blood_type}</p>
-              <p><strong>Phone:</strong> {selectedDonor.phone || 'Not provided'}</p>
-              <p><strong>Email:</strong> {selectedDonor.email || 'Not provided'}</p>
-              <p><strong>Address:</strong> {selectedDonor.address || 'Not provided'}</p>
-              <p><strong>Status:</strong> {selectedDonor.is_available ? 'Available' : 'Not Available'}</p>
-            </div>
-            <div className="modal-actions">
-              <button 
-                className="close-modal-btn"
-                onClick={() => {
-                  setShowDonorModal(false)
-                  setSelectedDonor(null)
-                }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="error-toast">
-          {error}
-        </div>
-      )}
+      {error && <div className="error-toast">{error}</div>}
     </div>
   )
 }

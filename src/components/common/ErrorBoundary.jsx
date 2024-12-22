@@ -4,28 +4,20 @@ import PropTypes from 'prop-types'
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
-    this.state = { hasError: false, error: null }
+    this.state = { hasError: false }
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, error }
+    return { hasError: true }
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo)
+    console.error('Error:', error, errorInfo)
   }
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="error-container">
-          <h2>Something went wrong</h2>
-          <p>{this.state.error.message}</p>
-          <button onClick={() => window.location.reload()}>
-            Refresh Page
-          </button>
-        </div>
-      )
+      return <h1>Something went wrong.</h1>
     }
 
     return this.props.children
