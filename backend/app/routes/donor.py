@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import Donor, BloodRequest, DonorResponse, Donation
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -100,9 +101,9 @@ def get_donations():
         logger.error(f"Error getting donation history: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@donor_bp.route('/availability', methods=['POST'])
+@donor_bp.route('/availability', methods=['PUT'])
 @jwt_required()
-def toggle_availability():
+def update_availability():
     try:
         donor_id = get_jwt_identity()
         donor = Donor.query.get(int(donor_id))
@@ -111,16 +112,37 @@ def toggle_availability():
             return jsonify({'error': 'Donor not found'}), 404
 
         data = request.get_json()
-        donor.is_available = data['is_available']
-        db.session.commit()
+        is_available = data.get('is_available')
+        
+        if is_available is None:
+            return jsonify({'error': 'is_available field is required'}), 400
 
+        # Check if donor is eligible to be available
+        if is_available:
+            last_donation = Donation.query.filter_by(
+                donor_id=donor.id,
+                status='completed'
+            ).order_by(Donation.donation_date.desc()).first()
+            
+            if last_donation:
+                days_since_donation = (datetime.utcnow() - last_donation.donation_date).days
+                if days_since_donation < 56:  # 56 days = 8 weeks minimum between donations
+                    return jsonify({
+                        'error': 'Must wait 8 weeks between donations',
+                        'days_remaining': 56 - days_since_donation
+                    }), 400
+
+        donor.is_available = is_available
+        db.session.commit()
+        
         return jsonify({
-            'message': 'Availability updated',
+            'message': 'Availability updated successfully',
             'is_available': donor.is_available
         }), 200
 
     except Exception as e:
         db.session.rollback()
+        logger.error(f"Error updating donor availability: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @donor_bp.route('/nearby-requests', methods=['GET'])

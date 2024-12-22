@@ -24,6 +24,8 @@ function HospitalDashboard() {
   const [responses, setResponses] = useState([])
   const [loadingResponses, setLoadingResponses] = useState(false)
   const [activeTab, setActiveTab] = useState('active')
+  const [showContactModal, setShowContactModal] = useState(false)
+  const [selectedDonor, setSelectedDonor] = useState(null)
 
   useEffect(() => {
     fetchDashboardData()
@@ -92,6 +94,21 @@ function HospitalDashboard() {
       setSelectedRequest(null)
     } catch (err) {
       setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleContactDonor = async (donorId) => {
+    try {
+      setLoading(true)
+      setError(null)
+      const donorContact = await hospitalService.getDonorContact(donorId)
+      setSelectedDonor(donorContact)
+      setShowContactModal(true)
+    } catch (err) {
+      console.error('Error fetching donor contact:', err)
+      setError('Failed to get donor contact information')
     } finally {
       setLoading(false)
     }
@@ -347,6 +364,37 @@ function HospitalDashboard() {
               </div>
             )}
             <button onClick={() => setShowResponsesModal(false)} className="close-modal-btn">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showContactModal && selectedDonor && (
+        <div className="modal">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Contact Donor</h3>
+            </div>
+            <div className="donor-contact-info">
+              <div className="info-group">
+                <label>Name:</label>
+                <span>{selectedDonor.name}</span>
+              </div>
+              <div className="info-group">
+                <label>Phone:</label>
+                <span>{selectedDonor.phone}</span>
+              </div>
+              <div className="info-group">
+                <label>Email:</label>
+                <span>{selectedDonor.email}</span>
+              </div>
+              <div className="info-group">
+                <label>Address:</label>
+                <span>{selectedDonor.address}</span>
+              </div>
+            </div>
+            <button onClick={() => setShowContactModal(false)} className="close-modal-btn">
               Close
             </button>
           </div>

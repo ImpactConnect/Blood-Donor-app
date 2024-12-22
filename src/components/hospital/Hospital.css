@@ -621,3 +621,71 @@
   background: var(--primary-light);
   color: var(--primary);
 }
+
+/* Donor Contact Modal */
+.donor-contact-info {
+  padding: 1rem;
+  background: var(--background);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.donor-contact-info .info-group {
+  display: flex;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.donor-contact-info .info-group:last-child {
+  border-bottom: none;
+}
+
+.donor-contact-info label {
+  font-weight: 500;
+  min-width: 100px;
+  color: var(--text-secondary);
+}
+
+.donor-contact-info span {
+  color: var(--text-primary);
+}
+
+/* Modal Improvements */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.close-modal-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--background);
+  border: none;
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.close-modal-btn:hover {
+  background: var(--hover-background);
+}

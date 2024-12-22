@@ -34,9 +34,23 @@ export const donorService = {
         }
     },
 
-    async toggleAvailability(isAvailable) {
-        const response = await api.post('/donor/availability', { is_available: isAvailable })
-        return response.data
+    async updateAvailability(isAvailable) {
+        try {
+            const response = await api.put('/donor/availability', { 
+                is_available: isAvailable 
+            })
+            console.log('Availability updated:', response.data)
+            return response.data
+        } catch (error) {
+            console.error('Error updating availability:', error)
+            if (error.response?.status === 400) {
+                throw new Error('Invalid availability status')
+            } else if (error.response?.status === 403) {
+                throw new Error('Not authorized to update availability')
+            } else {
+                throw new Error(error.response?.data?.error || 'Failed to update availability status')
+            }
+        }
     },
 
     async getNearbyRequests() {
