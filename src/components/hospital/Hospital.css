@@ -186,3 +186,12 @@
     align-items: flex-start;
   }
 } 
+
+.no-donors {
+    text-align: center;
+    color: #666;
+    padding: 2rem;
+    background: #f8f8f8;
+    border-radius: 4px;
+    margin: 1rem 0;
+} 

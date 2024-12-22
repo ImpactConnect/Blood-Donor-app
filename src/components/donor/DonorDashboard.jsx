@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import useGeolocation from '../../hooks/useGeolocation'
-import { calculateDistance, getAddressFromCoords } from '../../utils/locationUtils'
+import { donorService } from '../../services/donor.service'
 import './Donor.css'
 
 function DonorDashboard() {
@@ -9,83 +9,63 @@ function DonorDashboard() {
   const [isAvailable, setIsAvailable] = useState(false)
   const [donations, setDonations] = useState([])
   const [nearbyRequests, setNearbyRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const { location, error: locationError } = useGeolocation()
   const [address, setAddress] = useState('')
 
   useEffect(() => {
     if (location) {
-      // Update user's location in the backend
-      updateUserLocation(location)
-      // Get formatted address
-      getAddressFromCoords(location.latitude, location.longitude)
-        .then(addr => setAddress(addr))
+      setError(null)
+      donorService.updateProfile({
+        latitude: location.latitude,
+        longitude: location.longitude
+      })
+      .catch(err => {
+        console.error('Error updating location:', err)
+        setError('Failed to update location')
+      })
     }
   }, [location])
-
-  const updateUserLocation = async (location) => {
-    try {
-      await fetch('/api/donors/location', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          latitude: location.latitude,
-          longitude: location.longitude
-        })
-      })
-    } catch (error) {
-      console.error('Error updating location:', error)
-    }
-  }
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // Include current location in the requests
-        const locationQuery = location 
-          ? `?lat=${location.latitude}&lon=${location.longitude}`
-          : ''
+        setLoading(true)
+        setError(null)
         const [donationsData, requestsData] = await Promise.all([
-          fetch('/api/donations/history').then(res => res.json()),
-          fetch(`/api/requests/nearby${locationQuery}`).then(res => res.json())
+          donorService.getDonationHistory(),
+          donorService.getNearbyRequests()
         ])
         
         setDonations(donationsData)
-        // Sort requests by distance if location is available
-        if (location) {
-          const sortedRequests = requestsData.map(request => ({
-            ...request,
-            distance: calculateDistance(
-              location.latitude,
-              location.longitude,
-              request.latitude,
-              request.longitude
-            )
-          })).sort((a, b) => a.distance - b.distance)
-          setNearbyRequests(sortedRequests)
-        } else {
-          setNearbyRequests(requestsData)
-        }
+        setNearbyRequests(requestsData)
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
+        setError('Failed to load dashboard data')
+      } finally {
+        setLoading(false)
       }
     }
 
     fetchDashboardData()
-  }, [location])  // Add location as dependency
+  }, [location])
 
   const handleAvailabilityToggle = async () => {
     try {
-      // Update availability status in backend
-      await fetch('/api/donors/availability', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isAvailable: !isAvailable })
-      })
-      
+      await donorService.toggleAvailability(!isAvailable)
       setIsAvailable(!isAvailable)
     } catch (error) {
       console.error('Error updating availability:', error)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="dashboard-container">
+        <div className="loading-spinner">Loading...</div>
+      </div>
+    )
   }
 
   return (

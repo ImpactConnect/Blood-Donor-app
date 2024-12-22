@@ -1,4 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import ErrorBoundary from './components/common/ErrorBoundary'
+import ProtectedRoute from './components/common/ProtectedRoute'
 import { AuthProvider } from './contexts/AuthContext'
 import { NotificationProvider } from './contexts/NotificationContext'
 import Header from './components/common/Header'
@@ -12,26 +14,42 @@ import './App.css'
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <NotificationProvider>
-          <div className="app-container">
-            <Header />
-            <main className="main-content">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/donor/dashboard" element={<DonorDashboard />} />
-                <Route path="/hospital/dashboard" element={<HospitalDashboard />} />
-                <Route path="/emergency" element={<EmergencyRequests />} />
-              </Routes>
-            </main>
-            <Footer />
-          </div>
-        </NotificationProvider>
-      </AuthProvider>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <NotificationProvider>
+            <div className="app-container">
+              <Header />
+              <main className="main-content">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route 
+                    path="/donor/dashboard" 
+                    element={
+                      <ProtectedRoute requiredRole="donor">
+                        <DonorDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/hospital/dashboard" 
+                    element={
+                      <ProtectedRoute requiredRole="hospital">
+                        <HospitalDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route path="/emergency" element={<EmergencyRequests />} />
+                </Routes>
+              </main>
+              <Footer />
+            </div>
+          </NotificationProvider>
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   )
 }
 

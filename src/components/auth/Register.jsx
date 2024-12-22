@@ -8,10 +8,12 @@ function Register() {
     email: '',
     password: '',
     confirmPassword: '',
-    userType: 'donor', // or 'hospital'
+    user_type: 'donor',
     name: '',
-    bloodType: '',
-    location: ''
+    blood_type: '',
+    address: '',
+    phone: '',
+    license_number: ''
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -37,20 +39,33 @@ function Register() {
       setError('')
       setLoading(true)
       
-      // Register API call would go here
+      const requestData = {
+        ...formData,
+        confirmPassword: undefined
+      }
+
+      console.log('Sending registration data:', {
+        ...requestData,
+        password: '[REDACTED]'
+      })
+      
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(requestData)
       })
 
-      if (!response.ok) throw new Error('Registration failed')
+      const data = await response.json()
+      
+      if (!response.ok) {
+        console.error('Registration failed:', data)
+        throw new Error(data.error || 'Registration failed')
+      }
 
-      // Auto login after successful registration
       await login(formData.email, formData.password)
-      navigate(formData.userType === 'donor' ? '/donor/dashboard' : '/hospital/dashboard')
+      navigate(formData.user_type === 'donor' ? '/donor/dashboard' : '/hospital/dashboard')
     } catch (err) {
-      setError('Failed to create an account')
+      setError(err.message || 'Failed to create an account')
     } finally {
       setLoading(false)
     }
@@ -64,11 +79,11 @@ function Register() {
         
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label htmlFor="userType">Register as</label>
+            <label htmlFor="user_type">Register as</label>
             <select
-              id="userType"
-              name="userType"
-              value={formData.userType}
+              id="user_type"
+              name="user_type"
+              value={formData.user_type}
               onChange={handleChange}
               required
             >
@@ -79,7 +94,7 @@ function Register() {
 
           <div className="form-group">
             <label htmlFor="name">
-              {formData.userType === 'donor' ? 'Full Name' : 'Hospital Name'}
+              {formData.user_type === 'donor' ? 'Full Name' : 'Hospital Name'}
             </label>
             <input
               type="text"
@@ -103,13 +118,13 @@ function Register() {
             />
           </div>
 
-          {formData.userType === 'donor' && (
+          {formData.user_type === 'donor' && (
             <div className="form-group">
-              <label htmlFor="bloodType">Blood Type</label>
+              <label htmlFor="blood_type">Blood Type</label>
               <select
-                id="bloodType"
-                name="bloodType"
-                value={formData.bloodType}
+                id="blood_type"
+                name="blood_type"
+                value={formData.blood_type}
                 onChange={handleChange}
                 required
               >
@@ -125,6 +140,31 @@ function Register() {
               </select>
             </div>
           )}
+
+          {formData.user_type === 'hospital' && (
+            <div className="form-group">
+              <label htmlFor="address">Hospital Address</label>
+              <input
+                type="text"
+                id="address"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          )}
+
+          <div className="form-group">
+            <label htmlFor="phone">Phone Number</label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+            />
+          </div>
 
           <div className="form-group">
             <label htmlFor="password">Password</label>

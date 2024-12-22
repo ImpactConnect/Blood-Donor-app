@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
+import { authService } from '../services/auth.service'
 
 const AuthContext = createContext(null)
 
@@ -12,12 +13,12 @@ export const AuthProvider = ({ children }) => {
       try {
         const token = localStorage.getItem('authToken')
         if (token) {
-          // Validate token with backend
-          // const userData = await validateToken(token)
-          // setUser(userData)
+          const userData = await authService.getCurrentUser()
+          setUser(userData)
         }
       } catch (error) {
         console.error('Auth error:', error)
+        authService.logout()
       } finally {
         setLoading(false)
       }
@@ -28,17 +29,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      // Implement actual API call here
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      })
-      
-      if (!response.ok) throw new Error('Login failed')
-      
-      const data = await response.json()
-      localStorage.setItem('authToken', data.token)
+      const data = await authService.login(email, password)
       setUser(data.user)
       return { success: true }
     } catch (error) {
@@ -47,7 +38,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   const logout = () => {
-    localStorage.removeItem('authToken')
+    authService.logout()
     setUser(null)
   }
 

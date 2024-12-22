@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import useGeolocation from '../../hooks/useGeolocation'
-import { calculateDistance, sortByDistance } from '../../utils/locationUtils'
+import { hospitalService } from '../../services/hospital.service'
 import './Hospital.css'
 
 function HospitalDashboard() {
   const { user } = useAuth()
   const [activeRequests, setActiveRequests] = useState([])
   const [availableDonors, setAvailableDonors] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const { location } = useGeolocation()
   const [newRequest, setNewRequest] = useState({
     bloodType: '',
@@ -17,65 +19,76 @@ function HospitalDashboard() {
   })
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchRequests = async () => {
       try {
-        const locationQuery = location 
-          ? `?lat=${location.latitude}&lon=${location.longitude}`
-          : ''
-        const [requestsData, donorsData] = await Promise.all([
-          fetch('/api/hospital/requests').then(res => res.json()),
-          fetch(`/api/hospital/available-donors${locationQuery}`).then(res => res.json())
-        ])
-        
-        setActiveRequests(requestsData)
-        if (location) {
-          const sortedDonors = donorsData.map(donor => ({
-            ...donor,
-            distance: calculateDistance(
-              location.latitude,
-              location.longitude,
-              donor.latitude,
-              donor.longitude
-            )
-          })).sort((a, b) => a.distance - b.distance)
-          setAvailableDonors(sortedDonors)
-        } else {
-          setAvailableDonors(donorsData)
-        }
+        setLoading(true)
+        setError(null)
+        const requestsData = await hospitalService.getActiveRequests()
+        setActiveRequests(Array.isArray(requestsData) ? requestsData : [])
       } catch (error) {
-        console.error('Error fetching dashboard data:', error)
+        console.error('Error fetching requests:', error)
+        setError(error.message || 'Failed to load requests')
+      } finally {
+        setLoading(false)
       }
     }
 
-    fetchDashboardData()
-  }, [location])
+    fetchRequests()
+  }, [])
+
+  useEffect(() => {
+    const fetchDonors = async () => {
+      if (activeRequests.length > 0) {
+        try {
+          const donorsData = await hospitalService.getAvailableDonors()
+          setAvailableDonors(Array.isArray(donorsData) ? donorsData : [])
+        } catch (error) {
+          console.error('Error fetching donors:', error)
+        }
+      } else {
+        setAvailableDonors([])
+      }
+    }
+
+    fetchDonors()
+  }, [activeRequests])
+
+  if (loading) {
+    return (
+      <div className="dashboard-container">
+        <div className="loading-spinner">Loading...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="dashboard-container">
+        <div className="error-message">{error}</div>
+      </div>
+    )
+  }
 
   const handleNewRequest = async (e) => {
     e.preventDefault()
     try {
-      const requestData = {
-        ...newRequest,
-        latitude: location?.latitude,
-        longitude: location?.longitude
-      }
-      const response = await fetch('/api/hospital/requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestData)
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setActiveRequests(prev => [...prev, data])
-        setNewRequest({
-          bloodType: '',
-          units: 1,
-          urgency: 'normal',
-          description: ''
-        })
-      }
-    } catch (error) {
-      console.error('Error creating request:', error)
+        setError(null)
+        console.log('Submitting request:', newRequest)
+        const response = await hospitalService.createBloodRequest(newRequest)
+        console.log('Request created:', response)
+        
+        if (response.request) {
+            setActiveRequests(prev => [...prev, response.request])
+            setNewRequest({
+                bloodType: '',
+                units: 1,
+                urgency: 'normal',
+                description: ''
+            })
+        }
+    } catch (err) {
+        console.error('Error creating request:', err)
+        setError(err.message || 'Failed to create request')
     }
   }
 
@@ -187,18 +200,28 @@ function HospitalDashboard() {
 
         <div className="dashboard-card">
           <h2>Available Donors Nearby</h2>
-          <div className="donors-list">
-            {availableDonors.map(donor => (
-              <div key={donor.id} className="donor-item">
-                <div className="donor-info">
-                  <span className="blood-type">{donor.bloodType}</span>
-                  <span className="donor-name">{donor.name}</span>
-                  <span className="donor-distance">{donor.distance}km away</span>
-                </div>
-                <button className="contact-btn">Contact Donor</button>
+          {activeRequests.length > 0 ? (
+            availableDonors.length > 0 ? (
+              <div className="donors-list">
+                {availableDonors.map(donor => (
+                  <div key={donor.id} className="donor-item">
+                    <div className="donor-info">
+                      <span className="blood-type">{donor.bloodType}</span>
+                      <span className="donor-name">{donor.name}</span>
+                      <span className="donor-distance">
+                        {donor.distance ? `${donor.distance}km away` : 'Distance unknown'}
+                      </span>
+                    </div>
+                    <button className="contact-btn">Contact Donor</button>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            ) : (
+              <p className="no-donors">No available donors found</p>
+            )
+          ) : (
+            <p className="no-donors">Create a blood request to see available donors</p>
+          )}
         </div>
       </div>
     </div>
