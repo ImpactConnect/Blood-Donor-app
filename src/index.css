@@ -31,6 +31,10 @@ body {
   min-width: 320px;
   min-height: 100vh;
   width: 100%;
+  font-family: 'Inter', sans-serif;
+  background: var(--background);
+  color: var(--text-primary);
+  line-height: 1.5;
 }
 
 #root {
@@ -54,15 +58,13 @@ h1 {
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
   font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  transition: all 0.2s;
   cursor: pointer;
-  transition: border-color 0.25s;
+  border: none;
+  font-family: 'Inter', sans-serif;
 }
 button:hover {
   border-color: #646cff;
@@ -83,4 +85,17 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+input, select, textarea {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--secondary);
+  border-radius: var(--radius-md);
+  font-family: 'Inter', sans-serif;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }

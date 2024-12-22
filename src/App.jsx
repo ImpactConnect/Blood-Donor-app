@@ -11,6 +11,10 @@ import DonorDashboard from './components/donor/DonorDashboard'
 import HospitalDashboard from './components/hospital/HospitalDashboard'
 import EmergencyRequests from './components/emergency/EmergencyRequests'
 import './App.css'
+import './styles/theme.css'
+import './components/common/Common.css'
+import './components/layout/Navigation.css'
+import './components/dashboard/Dashboard.css'
 
 function App() {
   return (
